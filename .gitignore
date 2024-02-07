@@ -1,13 +1,21 @@
-./Data
-./TBD
-./spatialPM25
-./SpatialInterp
-./sensor_location_vis
-./Paper
-./Meeting
-./LOOSE
-./GridMaps
-./DataDownload/data
-./BiasAnalysis-Jan17
-./BiasAnalysis-Jan12
-./InterpolationBaseline/data
+.DS_Store
+.ipynb_checkpoints
+BiasAnalysis-Feb-1/monthly_analysis/model_weights
+Data
+TBD
+spatialPM25
+SpatialInterp
+sensor_location_vis
+Paper
+Meeting
+LOOSE
+GridMaps
+DataDownload/data
+BiasAnalysis-Jan17
+BiasAnalysis-Jan12
+InterpolationBaseline/data
+Interpolation.png
+Monitoring Equity Analysis.ipynb
+PurpleAir_sensors.csv
+Sensor Data.ipynb
+*.pt
