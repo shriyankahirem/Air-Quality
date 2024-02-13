@@ -3,9 +3,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 import mplcursors
 import os
+import argparse
 
 from matplotlib.widgets import RectangleSelector
 from utils import average_hour, corrcoef_nan
+
+# Create a parser
+parser = argparse.ArgumentParser(description='Time Series Analysis')
+# Add arguments
+parser.add_argument('--idx1', type=int, default=4)
+parser.add_argument('--idx2', type=int, default=5)
+parser.add_argument('--month', type=str, default='Oct')
+# Parse the arguments
+args = parser.parse_args()
+
+month2slice = {'Oct': slice(0, 31*24),
+               'Nov': slice(31*24, 61*24),
+               'Dec': slice(61*24, 92*24),
+               'Jan': slice(92*24, 122*24)}
+
 
 # Prepare data
 data_dir = "../InterpolationBaseline/data/Oct0123_Jan3024/"
@@ -53,8 +69,10 @@ for id in area3_ids:
     area3_dfs.append(df)
 all_dfs = area1_dfs + area2_dfs + area3_dfs
 
-seq1 = all_dfs[0]["pm25"][:24*31]
-seq2 = all_dfs[1]["pm25"][:24*31]
+# Select the data
+slc = month2slice[args.month]
+seq1 = all_dfs[args.idx1]["pm25"][slc]
+seq2 = all_dfs[args.idx2]["pm25"][slc]
 
 
 
@@ -90,8 +108,10 @@ def oneselect(eclick, erelease):
         fig.canvas.draw_idle()
 
 fig, ax = plt.subplots()
-ax.plot(np.arange(len(seq1)), seq1, label="Seq1")
-ax.plot(np.arange(len(seq2)), seq2, label="Seq2")
+label1 = 'Sensor {}'.format(args.idx1)
+label2 = 'Sensor {}'.format(args.idx2)
+ax.plot(np.arange(len(seq1)), seq1, label=label1)
+ax.plot(np.arange(len(seq2)), seq2, label=label2)
 ax.legend()
 
 rect_selector = RectangleSelector(ax, oneselect, useblit=True,
