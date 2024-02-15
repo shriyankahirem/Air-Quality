@@ -30,6 +30,52 @@ def average_hour(df, columns=["longitude", "latitude", "pm25"]):
     return df
 
 
+def mean_nan(x):
+    """
+    Compute the mean of a sequence with NaN values
+    Input:
+        x: a sequence of numbers
+    Output:
+        mean: the mean of x
+    """
+    mask = ~np.isnan(x)
+    if mask.sum() == 0:
+        return np.nan
+    mean = np.mean(x[mask])
+    return mean
+
+def median_nan(x):
+    """
+    Compute the median of a sequence with NaN values
+    Input:
+        x: a sequence of numbers
+    Output:
+        median: the median of x
+    """
+    mask = ~np.isnan(x)
+    if mask.sum() == 0:
+        return np.nan
+    median = np.median(x[mask])
+    return median
+
+
+def average_correlation_nan(corr_matrix, method='mean'):
+    """
+    Analyze correlation matrix with NaN values
+    """
+    # Set diagonal to Nan
+    corr_matrix = corr_matrix.copy()
+    np.fill_diagonal(corr_matrix, np.nan)
+    # Compute the average correlation
+    avg_corr = []
+    for row in corr_matrix:
+        if method == 'mean':
+            avg_corr.append(mean_nan(row))
+        elif method == 'median':
+            avg_corr.append(median_nan(row))
+    return np.array(avg_corr)
+
+
 def corrcoef_nan(x, y):
     """
     Compute the correlation coefficient between two sequences with NaN values
