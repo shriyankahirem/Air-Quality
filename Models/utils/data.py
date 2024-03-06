@@ -74,6 +74,47 @@ def load_data(train_ratio=0.7, val_ratio=0.1, test_ratio=0.2, batch_size=32, see
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     return train_loader, val_loader, test_loader
 
+
+def load_data2(train_ratio=0.7, test_ratio=0.3, batch_size=256, seed=42):
+    data_dir = '/Users/shangjiedu/Desktop/aJay/Merced/Research/Air Quality/InterpolationBaseline/data/Oct0123_Jan3024/'
+    data_dir = '../InterpolationBaseline/data/Oct0123_Jan3024/'
+
+    files = [f for f in os.listdir(data_dir) if f.endswith('.csv')]
+    data = []
+    for i, file in enumerate(files):
+        df = pd.read_csv(data_dir + file)
+        df = average_hour(df)
+
+        # remove sensors with missing data
+        if len(df) < 2928:
+            print("File{}: {} contains missing hours".format(i, file))
+            continue
+
+        # remove sensors with outliers
+        if df["pm25"].max() > 500:
+            print("File{}: {} contains outliers".format(i, file))
+            continue
+
+        data.append(df.loc[:, ['pm25', 'longitude', 'latitude']])
+
+    data = np.array(data).transpose(1, 0, 2)
+    
+    np.random.seed(seed)
+    perm = np.random.permutation(data.shape[1])
+    n_train = int(train_ratio * data.shape[1])
+    n_test = int(test_ratio * data.shape[1])
+    train_idx = perm[:n_train]
+    val_idx = None
+    test_idx = perm[n_train:]
+    idx_list = [train_idx, val_idx, test_idx]
+
+    train_dataset = AirQualityDataset(data, idx_list=idx_list, dataset_type="train")
+    test_dataset = AirQualityDataset(data, idx_list=idx_list, dataset_type="test")
+
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    return train_loader, test_loader
+
 class AirQualityDataset(torch.utils.data.Dataset):
     def __init__(self, data, window=24, idx_list=None, dataset_type="train"):
         """
