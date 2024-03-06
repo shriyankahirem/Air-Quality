@@ -227,11 +227,11 @@ class Dual_Cross_Attention_Block(nn.Module):
     
 
 class Geo_Attention_Model(nn.Module):
-    def __init__(self, loc_dim=2, ser_dim=1, loc_embed_dim=64, ser_embed_dim=64, num_blocks=3,
-                 dim=64, num_heads=8, qkv_bias=False, qk_norm=False, proj_drop=0., attn_drop=0.,
+    def __init__(self, loc_dim=2, ser_dim=1, num_blocks=8,
+                 dim=512, num_heads=8, qkv_bias=False, qk_norm=False, proj_drop=0., attn_drop=0.,
                  norm_layer=nn.LayerNorm, act_layer=nn.GELU, mlp_layer=Mlp):
         super(Geo_Attention_Model, self).__init__()
-        self.embedding = Embedding(loc_dim, ser_dim, loc_embed_dim, ser_embed_dim)
+        self.embedding = Embedding(loc_dim, ser_dim, dim, dim)
 
         self.pred_token = nn.Parameter(torch.randn(1, 1, dim))
 

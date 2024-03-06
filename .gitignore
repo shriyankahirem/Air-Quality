@@ -19,3 +19,5 @@ Monitoring Equity Analysis.ipynb
 PurpleAir_sensors.csv
 Sensor Data.ipynb
 *.pt
+Models/test.ipynb
+Models/weights
