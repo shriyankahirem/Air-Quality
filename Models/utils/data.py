@@ -31,7 +31,7 @@ def average_hour(df, columns=["longitude", "latitude", "pm25"]):
     
     return df
 
-def load_data(train_ratio=0.7, val_ratio=0.1, test_ratio=0.2, seed=42):
+def load_data(train_ratio=0.7, val_ratio=0.1, test_ratio=0.2, batch_size=32, seed=42):
     data_dir = '/Users/shangjiedu/Desktop/aJay/Merced/Research/Air Quality/InterpolationBaseline/data/Oct0123_Jan3024/'
     data_dir = '../InterpolationBaseline/data/Oct0123_Jan3024/'
 
@@ -69,9 +69,9 @@ def load_data(train_ratio=0.7, val_ratio=0.1, test_ratio=0.2, seed=42):
     val_dataset = AirQualityDataset(data, idx_list=idx_list, dataset_type="val")
     test_dataset = AirQualityDataset(data, idx_list=idx_list, dataset_type="test")
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=32, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=32, shuffle=False)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     return train_loader, val_loader, test_loader
 
 class AirQualityDataset(torch.utils.data.Dataset):
@@ -100,6 +100,7 @@ class AirQualityDataset(torch.utils.data.Dataset):
             return (self.readings.shape[0] - self.window + 1) * len(self.val_idx)
         else:
             return (self.readings.shape[0] - self.window + 1) * len(self.test_idx)
+        
     def __getitem__(self, idx):
         if self.type == "train":
             target_idx = self.train_idx[idx % len(self.train_idx)]

@@ -8,7 +8,7 @@ from utils.data import load_data
 
 
 parser = argparse.ArgumentParser(description='Train Geo-Attention Model')
-parser.add_argument('--lr', type=float, default=2e-4)
+parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--epochs', type=int, default=300)
 parser.add_argument('--batch_size', type=int, default=32)
 args = parser.parse_args()
@@ -21,7 +21,7 @@ def config(args):
 
 
 def train(args):
-    train_loader, val_loader, test_loader = load_data()
+    train_loader, val_loader, test_loader = load_data(batch_size=args.batch_size)
 
     model = Geo_Attention_Model().to(args.device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
