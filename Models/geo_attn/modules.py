@@ -248,6 +248,8 @@ class Geo_Attention_Model(nn.Module):
                 mlp_layer=mlp_layer
             ) for _ in range(num_blocks)
         ])
+        
+        self.predict = nn.Linear(dim, 24)
 
     def forward(self, x):
         # loc_embed: (batch_size, n_sensors, dim)
@@ -264,6 +266,9 @@ class Geo_Attention_Model(nn.Module):
         for block in self.blocks:
             loc, ser = block(loc, ser)
 
-        return loc, ser
+        # predict pm25 readings
+        pred = self.predict(ser[:, -1, :])
+
+        return pred
 
         

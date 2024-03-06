@@ -33,6 +33,8 @@ def average_hour(df, columns=["longitude", "latitude", "pm25"]):
 
 def load_data(train_ratio=0.7, val_ratio=0.1, test_ratio=0.2, seed=42):
     data_dir = '/Users/shangjiedu/Desktop/aJay/Merced/Research/Air Quality/InterpolationBaseline/data/Oct0123_Jan3024/'
+    data_dir = '../InterpolationBaseline/data/Oct0123_Jan3024/'
+
     files = [f for f in os.listdir(data_dir) if f.endswith('.csv')]
     data = []
     for i, file in enumerate(files):
