@@ -271,4 +271,54 @@ class Geo_Attention_Model(nn.Module):
 
         return pred
 
+
+class Geo_Attention_Model2(nn.Module):
+    def __init__(self, loc_dim=2, ser_dim=1, num_blocks=8,
+                 dim=512, num_heads=8, qkv_bias=False, qk_norm=False, proj_drop=0., attn_drop=0.,
+                 norm_layer=nn.LayerNorm, act_layer=nn.GELU, mlp_layer=Mlp):
+        super(Geo_Attention_Model2, self).__init__()
+        self.embedding = Embedding(loc_dim, ser_dim, dim, dim)
+
+        self.pred_token = nn.Parameter(torch.randn(1, 1, 1))
+
+        self.blocks = nn.ModuleList([
+            Dual_Cross_Attention_Block(
+                dim=dim,
+                num_heads=num_heads,
+                qkv_bias=qkv_bias,
+                qk_norm=qk_norm,
+                proj_drop=proj_drop,
+                attn_drop=attn_drop,
+                norm_layer=norm_layer,
+                act_layer=act_layer,
+                mlp_layer=mlp_layer
+            ) for _ in range(num_blocks)
+        ])
+        
+        self.predict = nn.Linear(dim, 1)
+
+    def forward(self, x):
+        # loc_embed: (batch_size, n_sensors, dim)
+        # ser_embed: (batch_size, n_sensors, dim)
+        # target_loc_embed: (batch_size, dim)
+        loc, ser, target_loc, target_reading = x
+        target_reading = target_reading.unsqueeze(-1)
+        target_reading[:, -1, :] = self.pred_token
+        ser = torch.cat((ser, target_reading), dim=2)
+        x = (loc, ser, target_loc)
+        loc_embed, ser_embed, target_loc_embed = self.embedding(x)
+        B, N, D = loc_embed.shape
+
+        # concatenate target and monitored sensors
+        loc = torch.cat((loc_embed, target_loc_embed.unsqueeze(1)), dim=1)
+        ser = ser_embed
+
+        # dual cross attention
+        for block in self.blocks:
+            loc, ser = block(loc, ser)
+
+        # predict pm25 readings
+        pred = self.predict(ser[:, -1, :])
+
+        return pred
         

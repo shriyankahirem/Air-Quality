@@ -16,6 +16,7 @@ def average_hour(df, columns=["longitude", "latitude", "pm25"]):
 
     # decompose timestamp
     df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed')
+    # df['timestamp'] = pd.to_datetime(df['timestamp'])
     df['year'] = df['timestamp'].dt.year
     df['month'] = df['timestamp'].dt.month
     df['day'] = df['timestamp'].dt.day
@@ -36,6 +37,7 @@ def load_data(train_ratio=0.7, val_ratio=0.1, test_ratio=0.2, batch_size=32, see
     data_dir = '../InterpolationBaseline/data/Oct0123_Jan3024/'
 
     files = [f for f in os.listdir(data_dir) if f.endswith('.csv')]
+    files.sort()
     data = []
     for i, file in enumerate(files):
         df = pd.read_csv(data_dir + file)
