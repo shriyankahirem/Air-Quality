@@ -80,6 +80,7 @@ def load_data2(train_ratio=0.7, test_ratio=0.3, batch_size=256, seed=42):
     data_dir = '../InterpolationBaseline/data/Oct0123_Jan3024/'
 
     files = [f for f in os.listdir(data_dir) if f.endswith('.csv')]
+    files.sort()
     data = []
     for i, file in enumerate(files):
         df = pd.read_csv(data_dir + file)
