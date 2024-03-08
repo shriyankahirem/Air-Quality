@@ -184,6 +184,19 @@ class MaskedAutoEncoder(nn.Module):
 
         # -----------------------------------------------------------------
         # MAE Decoder
+        self.decoder_loc_embedding = nn.Linear(dim, decoder_dim, bias=True)
+        self.decoder_ser_embedding = nn.Linear(dim, decoder_dim, bias=True)
+
+        self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_dim))
+
+        self.decoder_blocks = nn.ModuleList([
+            Cross_Attention_Block(dim=decoder_dim, num_heads=decoder_num_heads, mlp_ratio=mlp_ratio,
+                                  qkv_bias=True, qk_norm=True, norm_layer=norm_layer, fix_context=True)
+            for _ in range(decoder_depth)
+        ])
+
+        self.decoder_norm = norm_layer(decoder_dim)
+        self.decoder_pred = nn.Linear(decoder_dim, 1, bias=True)
 
 
 
@@ -213,10 +226,17 @@ class MaskedAutoEncoder(nn.Module):
 
         return x1_masked, x2_masked, mask, ids_restore
 
-    def forward_encoder(self, x):
-        # (batch_size, n_sensors, dim), (batch_size, n_sensors, dim)
-        loc_embed, readings_embed = self.embedding(x)
-        
+    def forward_encoder(self, loc_embed, readings_embed):
+        """
+        Input:
+            loc_embed: a tensor with shape (batch_size, n_sensors, dim)
+            readings_embed: a tensor with shape (batch_size, n_sensors, dim)
+        Output:
+            loc_embed_masked: a tensor with shape (batch_size, n_sensors*(1-mask_ratio), dim)
+            readings_embed_masked: a tensor with shape (batch_size, n_sensors*(1-mask_ratio), dim)
+            mask: a tensor with shape (batch_size, n_sensors), n_sensors are unshuffled
+            ids_restore: a tensor with shape (batch_size, n_sensors), used to restore the original order
+        """
         # random masking
         loc_embed_masked, readings_embed_masked, mask, ids_restore = self.random_masking(loc_embed, readings_embed, mask_ratio=0.25)
 
@@ -228,5 +248,63 @@ class MaskedAutoEncoder(nn.Module):
 
         return loc_embed_masked, readings_embed_masked, mask, ids_restore
 
+    def forward_decoder(self, loc_embed, readings_embed_masked, ids_restore):
+        """
+        Input:
+            loc_embed: a tensor with shape (batch_size, n_sensors, dim), sensors are unshuffled
+            readings_embed_masked: a tensor with shape (batch_size, n_sensors*(1-mask_ratio), dim)
+            ids_restore: a tensor with shape (batch_size, n_sensors), used to restore the original order
+        Output:
+            readings: a tensor with shape (batch_size, n_sensors)
+        """
+        B, N, D = loc_embed.shape
+        N_KEEP = readings_embed_masked.shape[1]
+
+        # embed location
+        loc_embed = self.decoder_loc_embedding(loc_embed)
+        # embed readings
+        mask_tokens = self.mask_token.repeat(B, N - N_KEEP, 1)
+        readings_embed_masked = self.decoder_ser_embedding(readings_embed_masked)
+        readings_embed = torch.cat([readings_embed_masked, mask_tokens], dim=1)
+        readings_embed = torch.gather(readings_embed, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, loc_embed.shape[-1]))   # unshuffle sensors
+
+        # apply decoder blocks
+        for blk in self.decoder_blocks:
+            loc_embed, readings_embed = blk(loc_embed, readings_embed)
+        readings_embed = self.decoder_norm(readings_embed)
+
+        # predict pm25 readings
+        readings = self.decoder_pred(readings_embed).squeeze()
+
+        return readings
+
+    def forward_loss(self, readings, readings_pred, mask):
+        """
+        Input:
+            readings: a tensor with shape (batch_size, window, n_sensor)
+            readings_pred: a tensor with shape (batch_size, n_sensor)
+            mask: a tensor with shape (batch_size, n_sensor)
+        Output:
+            loss: a scalar
+        """
+        target = readings[:, -1, :]   # (batch_size, n_sensors)
+        loss = (target - readings_pred) ** 2
+
+        loss = (loss * mask).sum() / mask.sum()
+        return loss
+
     def forward(self, x):
-        return self.forward_encoder(x)     
+        # embedding
+        # (batch_size, n_sensors, dim), (batch_size, n_sensors, dim)
+        loc_embed, readings_embed = self.embedding(x)
+
+        # encoder
+        loc_embed_masked, readings_embed_masked, mask, ids_restore = self.forward_encoder(loc_embed, readings_embed)
+
+        # decoder
+        readings_pred = self.forward_decoder(loc_embed, readings_embed_masked, ids_restore)
+
+        # loss
+        loss = self.forward_loss(x[1], readings_pred, mask)
+
+        return loss, readings_pred, mask
