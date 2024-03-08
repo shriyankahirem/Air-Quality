@@ -128,7 +128,8 @@ class Cross_Attention_Block(nn.Module):
                  attn_drop=0.,
                  norm_layer=nn.LayerNorm,
                  act_layer=nn.GELU,
-                 mlp_layer=Mlp):
+                 mlp_layer=Mlp,
+                 fix_context=True):
         super(Cross_Attention_Block, self).__init__()
         self.norm1 = norm_layer(dim)
         self.attn = Cross_Attention(
@@ -149,12 +150,16 @@ class Cross_Attention_Block(nn.Module):
                              norm_layer=norm_layer,
                              drop=proj_drop)
         
+        self.fix_context = fix_context
+        
     def forward(self, x1, x2):
         x = x1 + self.attn(self.norm1(x1), self.norm1(x2))
         x = x + self.mlp(self.norm2(x))
 
-        return x, x2
-    
+        if self.fix_context:
+            return x, x2
+        else:
+            return x1, x 
 
 class MaskedAutoEncoder(nn.Module):
     def __init__(self,
@@ -171,11 +176,15 @@ class MaskedAutoEncoder(nn.Module):
         
         self.blocks = nn.ModuleList([
             Cross_Attention_Block(dim=dim, num_heads=num_heads, mlp_ratio=mlp_ratio,
-                                  qkv_bias=True, qk_norm=True, norm_layer=norm_layer)
+                                  qkv_bias=True, qk_norm=True, norm_layer=norm_layer, fix_context=False)
             for _ in range(depth)
         ])
         self.norm = norm_layer(dim)
         # -----------------------------------------------------------------
+
+        # -----------------------------------------------------------------
+        # MAE Decoder
+
 
 
     def random_masking(self, x1, x2, mask_ratio):
@@ -203,8 +212,6 @@ class MaskedAutoEncoder(nn.Module):
         mask = torch.gather(mask, dim=1, index=ids_restore)
 
         return x1_masked, x2_masked, mask, ids_restore
-
-
 
     def forward_encoder(self, x):
         # (batch_size, n_sensors, dim), (batch_size, n_sensors, dim)
