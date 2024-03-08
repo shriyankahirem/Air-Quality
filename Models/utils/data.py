@@ -127,9 +127,10 @@ class AirQualityDataset(torch.utils.data.Dataset):
         """
         self.readings = torch.from_numpy(data[:, :, 0]).float()   # (n_steps, n_sensors)
 
+        # min-max normalization
         self.locations = torch.from_numpy(data[0, :, 1:]).float()   # (n_sensors, 2)
-        self.locations[:, 0] /= 180
-        self.locations[:, 1] /= 90
+        self.locations[:, 0] = (self.locations[:, 0] - self.locations[:, 0].min()) / (self.locations[:, 0].max() - self.locations[:, 0].min())
+        self.locations[:, 1] = (self.locations[:, 1] - self.locations[:, 1].min()) / (self.locations[:, 1].max() - self.locations[:, 1].min())
 
         self.window = window
         self.train_idx = idx_list[0]

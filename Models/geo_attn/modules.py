@@ -109,7 +109,7 @@ class Cross_Attention(nn.Module):
                  num_heads=8,
                  qkv_bias=False,
                  qk_norm=False,
-                 attn_trop=0.,
+                 attn_drop=0.,
                  proj_drop=0.,
                  norm_layer=nn.LayerNorm):
         super(Cross_Attention, self).__init__()
@@ -125,7 +125,7 @@ class Cross_Attention(nn.Module):
         self.q_norm = norm_layer(dim) if qk_norm else nn.Identity()
         self.k_norm = norm_layer(dim) if qk_norm else nn.Identity()
 
-        self.attn_drop = nn.Dropout(attn_trop)
+        self.attn_drop = nn.Dropout(attn_drop)
         self.proj = nn.Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
     
