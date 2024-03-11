@@ -197,8 +197,7 @@ class MaskedAutoEncoder(nn.Module):
 
         self.decoder_norm = norm_layer(decoder_dim)
         self.decoder_pred = nn.Linear(decoder_dim, 1, bias=True)
-
-
+        # -----------------------------------------------------------------
 
     def random_masking(self, x1, x2, mask_ratio):
         """
@@ -308,3 +307,42 @@ class MaskedAutoEncoder(nn.Module):
         loss = self.forward_loss(x[1], readings_pred, mask)
 
         return loss, readings_pred, mask
+    
+    def inference(self, x):
+        """
+        Input: a tuple of three tensors, (locs, readings, target_loc)
+            locs: a tensor with shape (batch_size, n_sensors, 2)
+            readings: a tensor with shape (batch_size, window, n_sensors)
+            target_loc: a tensor with shape (batch_size, 2)
+        Output:
+            readings_pred: a tensor with shape (batch_size,)
+        """
+        locs, readings, target_loc = x
+        B, N, _ = locs.shape
+
+        locs = torch.cat([locs, target_loc.unsqueeze(1)], dim=1)
+        locs_embed, readings_embed = self.embedding((locs, readings))   # (batch_size, n_sensors+1, dim), (batch_size, n_sensors, dim)
+        locs_embed_masked, target_loc_embed, readings_embed_masked = locs_embed[:, :-1, :], locs_embed[:, -1, :], readings_embed
+
+        # apply encoder blocks on monitored locations and readings
+        for blk in self.blocks:
+            locs_embed_masked, readings_embed_masked = blk(locs_embed_masked, readings_embed_masked)
+        locs_embed_masked = self.norm(locs_embed_masked)
+        readings_embed_masked = self.norm(readings_embed_masked)
+
+        # embed locations for decoder
+        locs_embed = self.decoder_loc_embedding(locs_embed)
+        # embed readings for decoder
+        mask_tokens = self.mask_token.repeat(B, 1, 1)
+        readings_embed_masked = self.decoder_ser_embedding(readings_embed_masked)
+        readings_embed = torch.cat([readings_embed_masked, mask_tokens], dim=1)
+
+        # apply decoder blocks
+        for blk in self.decoder_blocks:
+            locs_embed, readings_embed = blk(locs_embed, readings_embed)
+        readings_embed = self.decoder_norm(readings_embed)
+
+        # predict pm25 readings
+        readings_pred = self.decoder_pred(readings_embed).squeeze()
+
+        return readings_pred[:, -1]
